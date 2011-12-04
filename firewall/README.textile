@@ -1,0 +1,53 @@
+h1. Linux Firewall Helpers
+
+iptables rules management (and safety).
+
+Firewall rules and configuration files reside in /etc/fw
+
+Configure available rules in /etc/fw/rules.available directory.
+
+Enabled rules are symlinked into /etc/fw/rules.enabled
+
+h1. /etc/fw/fwctl
+
+Firewall control script.
+
+h3. show
+
+Shows enabled rules (the symlinks currenlty in rules.enabled).
+
+h3. apply-rules
+
+Apply currently enabled rules.
+
+h3. enable rule
+
+Enable a rule, by copying it into rules.enabled.
+
+h3. disable rule
+
+Disable a rule, by removing the copying from rules.enabled.
+
+h3. test rule
+
+Apply a rule, without making it permanent (i.e. copying into rules.enabled).
+
+h3. reset
+
+Clear and re-apply the currently enabled rules.  This is used to recover from testing a rule that locks you out of the system.
+
+h3. restore-check
+
+If /etc/fw/trigger is newer than /etc/fw/rules.current (i.e. the trigger file has been touched), this will clear and reapply all of the current rules.
+
+h3. clear
+
+Disables all firewall rules
+
+h1. Crontab
+
+Intall into /etc/cron.d
+
+Runs 'fwcntl restore-check' every 5 minutes to save you when you lock yourself out.
+
+

@@ -1,0 +1,136 @@
+#!/usr/bin/bash
+
+fwdir=/etc/fw
+enabled_dir=$FWDIR/rules.enabled
+available_dir=$FWDIR/rules.enabled
+current_rules=$FWDIR/rules.current
+trigger_file="$FWDIR/.set-rules"
+
+fw_enabled_rules() {
+  ls -1 $enabled/*.rule
+}
+
+fw_enable_rule() {
+  cp $available_dir/$1.rule $enabled_dir/
+}
+
+fw_disable_rule() {
+  rm $enabled_dir/$1.rule
+}
+
+fw_clear_all() {
+  iptables -F
+  iptables -X
+  iptables -P INPUT ACCEPT
+  iptables -P FORWARD ACCEPT
+  iptables -P OUTPUT ACCEPT
+}
+
+fw_combine_rules() {
+  for f in $(ls $enabled_dir | sort); do
+    cat $f 
+  done
+}
+
+fw_apply_rules () {
+  fw_combine_rules > $current_rules
+  iptables-restore < $current_rules
+}
+
+fw_test_rule () {
+  fw_combine_rules > $current_rules
+  cat $available_dir/$2.rule >> $current_rules
+  iptables-restore < $current_rules
+}
+
+fw_ensure_trigger_file () {
+  if [ -e $trigger_file ]; then
+    exit 0
+  fi
+
+  touch $trigger_file
+  if [ -e $current_rules ]; then
+    touch $current_rules
+  fi
+}
+
+fw_restore_check () {
+  if [ $trigger_file -ot $current_rules ]; then
+    fw_apply_rules
+  fi
+}
+
+case "$1" in
+  help)
+  echo "$0 show|list|clear|apply-rules|enable|disable|test|reset|restore-check"
+  ;;
+
+  show)
+  if [ -z "$2" ]; then
+    fw_combine_rules
+  else
+    rule_file="$available_dir/$2.rule"
+    if [ -e "$rule_file" ]; then
+      cat "$rule_file"
+    else
+      echo "Error: RULE $2 does not exist ($rule_file)"
+      exit 1
+    fi
+  fi
+  ;;
+
+  ls list)
+  for f in $(ls -1 $enabled/*.rule); do
+    echo $(basename $f .rule)
+  done
+  ;;
+
+  clear)
+  echo "clearning all firewall rules"
+  fw_clear_all
+  ;;
+
+  apply-rules)
+    fw_apply_rules
+  ;;
+
+  enable)
+  if [ -z "$2" ]; then
+    echo "Error: you must supply a rule name (see also list)"
+    exit 1
+  fi
+  fw_enable_rule "$2"
+  ;;
+
+  disable)
+  if [ -z "$2" ]; then
+    echo "Error: you must supply a rule name (see also list)"
+    exit 1
+  fi
+  fw_disable_rule "$2"
+  ;;
+
+  test)
+  if [ -z "$2" ]; then
+    echo "Error: you must supply a rule name (see also list)"
+    exit 1
+  fi
+  fw_test_rule "$2"
+  ;;
+
+  reset) 
+  fw_clear_all
+  fw_apply_rules
+  ;;
+
+  restore-check)
+  fw_ensure_trigger_file
+  fw_restore_check
+  ;;
+
+  *)
+  exit 1
+  ;;
+esac
+
+exit 0

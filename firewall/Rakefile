@@ -1,0 +1,21 @@
+require 'rubygems'
+require 'fileutils'
+
+namespace :fw do
+  desc "Install" do
+    %w[/etc/fw /etc/fw/rules.enabled /etc/fw/rules.available].each do |p|
+      unless File.exist? p
+        FileUtils.mkdir p
+      end
+    end
+
+    system "touch", "/etc/fw/.set-rules"
+
+    %w[bin/fwctrl].each do |f|
+      fname = File.basename(f)
+      FileUtils.cp f, "/etc/fw/#{fname}"
+    end
+
+    FileUtils.cp "files/fw.crontab", "/etc/cron.d"
+  end
+end
