@@ -10,7 +10,9 @@ namespace :fw do
       end
     end
 
-    system "touch", "/etc/fw/.set-rules"
+    unless File.exist? "/etc/fw/.set-rules"
+      system "touch", "/etc/fw/.set-rules"
+    end
 
     %w[bin/fwcntl].each do |f|
       fname = File.basename(f)

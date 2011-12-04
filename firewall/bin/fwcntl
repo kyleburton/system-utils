@@ -1,17 +1,31 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 fwdir=/etc/fw
-enabled_dir=$FWDIR/rules.enabled
-available_dir=$FWDIR/rules.enabled
-current_rules=$FWDIR/rules.current
-trigger_file="$FWDIR/.set-rules"
+enabled_dir=$fwdir/rules.enabled
+available_dir=$fwdir/rules.available
+current_rules=$fwdir/rules.current
+trigger_file="$fwdir/.set-rules"
 
 fw_enabled_rules() {
-  ls -1 $enabled/*.rule
+  echo $enabled_dir/*.rule | sort
+}
+
+fw_available_rules() {
+  echo $available_dir/*.rule | sort
 }
 
 fw_enable_rule() {
   cp $available_dir/$1.rule $enabled_dir/
+}
+
+fw_enable_all_rules() {
+  for f in $(echo $available_dir/*.rule); do
+    cp $f $enabled_dir/
+  done
+}
+
+fw_is_rule_enabled() {
+  test -e "$enabled_dir/$1.rule"
 }
 
 fw_disable_rule() {
@@ -27,61 +41,98 @@ fw_clear_all() {
 }
 
 fw_combine_rules() {
-  for f in $(ls $enabled_dir | sort); do
-    cat $f 
+  for f in $(fw_enabled_rules); do
+    test -e $f && cat $f 
+  done
+}
+
+fw_combine_available_rules() {
+  for f in $(fw_available_rules); do
+    test -e $f && cat $f 
   done
 }
 
 fw_apply_rules () {
   fw_combine_rules > $current_rules
+  echo "COMMIT" >> $current_rules
   iptables-restore < $current_rules
 }
 
 fw_test_rule () {
+  rule_file="$available_dir/$1.rule"
+  if [ ! -e "$rule_file" ]; then
+    echo "Error: rules [$1] does not exist : $rule_file"
+    exit 1
+  fi
   fw_combine_rules > $current_rules
-  cat $available_dir/$2.rule >> $current_rules
+  cat "$rule_file" >> $current_rules
+  echo "COMMIT" >> $current_rules
+  iptables-restore < $current_rules
+}
+
+fw_test_all_rules() {
+  fw_combine_available_rules > $current_rules
+  echo "COMMIT" >> $current_rules
   iptables-restore < $current_rules
 }
 
 fw_ensure_trigger_file () {
   if [ -e $trigger_file ]; then
-    exit 0
-  fi
-
-  touch $trigger_file
-  if [ -e $current_rules ]; then
-    touch $current_rules
+    return 0
+  else
+    echo "trigger didn't exist, touching"
+    touch $trigger_file
+    return 0
   fi
 }
 
 fw_restore_check () {
   if [ $trigger_file -ot $current_rules ]; then
+    echo "trigger was older than current rules, restoring..."
+    fw_clear_all
     fw_apply_rules
+    touch $trigger_file
+  else
+    echo "trigger was newer, not restoring"
   fi
 }
 
-case "$1" in
+CMD="$1"
+shift
+
+case "$CMD" in
   help)
-  echo "$0 show|list|clear|apply-rules|enable|disable|test|reset|restore-check"
+  echo "$0 installed|show|list|clear|apply-rules|enable|disable|test|reset|restore-check"
+  ;;
+
+  installed)
+  iptables -L -n
   ;;
 
   show)
-  if [ -z "$2" ]; then
+  if [ -z "$1" ]; then
     fw_combine_rules
   else
-    rule_file="$available_dir/$2.rule"
+    rule_file="$available_dir/$1.rule"
     if [ -e "$rule_file" ]; then
       cat "$rule_file"
     else
-      echo "Error: RULE $2 does not exist ($rule_file)"
+      echo "Error: RULE $1 does not exist ($rule_file)"
       exit 1
     fi
   fi
   ;;
 
-  ls list)
-  for f in $(ls -1 $enabled/*.rule); do
-    echo $(basename $f .rule)
+  ls|list)
+  for f in $(fw_available_rules); do
+    if [ -e $f ]; then
+      rule_name=$(basename $f .rule)
+      if fw_is_rule_enabled $rule_name; then
+        echo "rule	enabled	$rule_name"
+      else
+        echo "rule	disabled	$rule_name"
+      fi
+    fi
   done
   ;;
 
@@ -91,31 +142,40 @@ case "$1" in
   ;;
 
   apply-rules)
-    fw_apply_rules
+  fw_apply_rules
   ;;
 
   enable)
-  if [ -z "$2" ]; then
+  if [ -z "$1" ]; then
     echo "Error: you must supply a rule name (see also list)"
     exit 1
   fi
-  fw_enable_rule "$2"
+  fw_enable_rule "$1"
+  ;;
+
+  enable-all)
+  fw_enable_all_rules
+  fw_apply_rules
   ;;
 
   disable)
-  if [ -z "$2" ]; then
+  if [ -z "$1" ]; then
     echo "Error: you must supply a rule name (see also list)"
     exit 1
   fi
-  fw_disable_rule "$2"
+  fw_disable_rule "$1"
   ;;
 
   test)
-  if [ -z "$2" ]; then
+  if [ -z "$1" ]; then
     echo "Error: you must supply a rule name (see also list)"
     exit 1
   fi
-  fw_test_rule "$2"
+  fw_test_rule "$1"
+  ;;
+
+  test-all)
+  fw_test_all_rules
   ;;
 
   reset) 
@@ -129,6 +189,7 @@ case "$1" in
   ;;
 
   *)
+  $0 help
   exit 1
   ;;
 esac
