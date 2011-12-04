@@ -2,7 +2,8 @@ require 'rubygems'
 require 'fileutils'
 
 namespace :fw do
-  desc "Install" do
+  desc "Install" 
+  task :install do
     %w[/etc/fw /etc/fw/rules.enabled /etc/fw/rules.available].each do |p|
       unless File.exist? p
         FileUtils.mkdir p
