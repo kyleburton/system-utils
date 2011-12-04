@@ -12,7 +12,7 @@ namespace :fw do
 
     system "touch", "/etc/fw/.set-rules"
 
-    %w[bin/fwctrl].each do |f|
+    %w[bin/fwcntl].each do |f|
       fname = File.basename(f)
       FileUtils.cp f, "/etc/fw/#{fname}"
     end
