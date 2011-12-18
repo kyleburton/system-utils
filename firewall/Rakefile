@@ -10,6 +10,14 @@ namespace :fw do
       end
     end
 
+    Dir["example-rules/*.rule"].each do |rule|
+      dest = "/etc/fw/rules.available/#{rule}"
+      unless File.exist? dest
+        FileUtils.cp rule, dest
+      end
+    end
+
+
     unless File.exist? "/etc/fw/.set-rules"
       system "touch", "/etc/fw/.set-rules"
     end
