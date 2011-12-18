@@ -11,7 +11,7 @@ namespace :fw do
     end
 
     Dir["example-rules/*.rule"].each do |rule|
-      dest = "/etc/fw/rules.available/#{rule}"
+      dest = "/etc/fw/rules.available/#{File.basename(rule)}"
       unless File.exist? dest
         FileUtils.cp rule, dest
       end
