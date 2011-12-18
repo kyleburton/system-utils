@@ -1,0 +1,3 @@
+#  Allows all outbound traffic
+-A OUTPUT -j ACCEPT
+

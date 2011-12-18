@@ -1,0 +1,5 @@
+#  Allows all loopback (lo0) traffic 
+-A INPUT -i lo -j ACCEPT
+# and drop all traffic to 127/8 that doesn't use lo0
+-A INPUT ! -i lo -d 127.0.0.0/8 -j REJECT
+

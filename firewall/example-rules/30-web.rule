@@ -1,0 +1,5 @@
+-A INPUT -i eth0 -p tcp --dport 80 -j ACCEPT
+-A INPUT -i eth0 -p tcp --dport 443 -j ACCEPT
+-A INPUT -i eth1 -p tcp --dport 80 -j ACCEPT
+-A INPUT -i eth1 -p tcp --dport 443 -j ACCEPT
+

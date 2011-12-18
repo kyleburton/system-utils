@@ -1,0 +1,4 @@
+#  Accepts all established connections
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+
